@@ -11,13 +11,21 @@
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.5.5",
+    "@zoom/videosdk": "^1.12.12",
+    "@zoom/videosdk-ui-toolkit": "^1.12.1-1",
     "aws-amplify": "^6.6.6",
+    "crypto-js": "^4.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "jsrsasign": "^11.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.5.0",
     "@aws-amplify/backend-cli": "^1.2.9",
+    "@types/crypto-js": "^4.2.2",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/jsrsasign": "^10.5.14",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
