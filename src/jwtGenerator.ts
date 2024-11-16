@@ -1,4 +1,5 @@
-import KJUR from 'jsrsasign';
+import { KJUR } from 'jsrsasign';
+
 
 // Hardcoded Zoom SDK Key and Secret
 const SDK_KEY = 'WFjIRpCwjZAsbwAHXIjUJfb2CCrXbQzyWuAf';
