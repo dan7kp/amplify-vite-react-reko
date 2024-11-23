@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 
 function App() {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [matchResult, setMatchResult] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { user, signOut } = useAuthenticator();
 
   const retrieveUserApiUrl =
     'https://v8c6qwk16b.execute-api.us-east-1.amazonaws.com/default/RetrieveUserByFace';
   const faceDataCaptureApiUrl =
     'https://v8c6qwk16b.execute-api.us-east-1.amazonaws.com/default/FaceDataCapture';
+
+  const loginId = user?.signInDetails?.loginId || ''; // Default to empty string if undefined
+  const userEmail = loginId.split('@')[0]; // Split by "@" and take the first part
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,11 +67,6 @@ function App() {
       return;
     }
 
-    if (!userEmail) {
-      setErrorMessage('Please enter a user email.');
-      return;
-    }
-
     setIsLoading(true);
     setErrorMessage(null);
     setMatchResult(null);
@@ -97,7 +96,7 @@ function App() {
 
   return (
     <main>
-      <h1>Image Upload for Rekognition</h1>
+      <h1>Welcome {userEmail} - Image Upload for Rekognition</h1>
 
       <input
         type="file"
@@ -105,17 +104,7 @@ function App() {
         onChange={handleImageUpload}
         style={{ marginBottom: '10px' }}
       />
-      <input
-        type="email"
-        placeholder="Enter user email"
-        value={userEmail || ''}
-        onChange={(e) => setUserEmail(e.target.value)}
-        style={{
-          marginLeft: '10px',
-          padding: '5px',
-          border: '1px solid #ccc',
-        }}
-      />
+
       <div style={{ marginTop: '20px' }}>
         <button
           onClick={handleRetrieveUserSubmit}
@@ -142,6 +131,8 @@ function App() {
           <p>{errorMessage}</p>
         </div>
       )}
+
+      <button onClick={signOut}>Sign out</button>
     </main>
   );
 }
