@@ -1,105 +1,147 @@
-import { useState, useEffect} from 'react';
-import uitoolkit from '@zoom/videosdk-ui-toolkit'
-import '@zoom/videosdk-ui-toolkit/dist/videosdk-ui-toolkit.css'
-import { useAuthenticator } from '@aws-amplify/ui-react';
-import { generateJWT } from './jwtGenerator'; // Assuming you created this file for JWT generation
+import React, { useState } from 'react';
 
 function App() {
-  const { signOut } = useAuthenticator();
-  const [sessionContainer, setSessionContainer] = useState<HTMLDivElement | null>(null);
-  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [matchResult, setMatchResult] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Configuration object
-  const config = {
-    videoSDKJWT: '', // Will be updated dynamically
-    sessionName: 'SessionA',
-    userName: 'UserA',
-    sessionPasscode: 'abc123',
-    features: ['preview', 'video', 'audio', 'share', 'chat', 'users', 'settings'],
-    options: {
-      init: {},
-      audio: {},
-      video: {},
-      share: {},
-    },
-    virtualBackground: {
-      allowVirtualBackground: true,
-      allowVirtualBackgroundUpload: true,
-      virtualBackgrounds: [
-        'https://images.unsplash.com/photo-1715490187538-30a365fa05bd?q=80&w=1945&auto=format&fit=crop',
-      ],
-    },
+  const retrieveUserApiUrl =
+    'https://v8c6qwk16b.execute-api.us-east-1.amazonaws.com/default/RetrieveUserByFace';
+  const faceDataCaptureApiUrl =
+    'https://v8c6qwk16b.execute-api.us-east-1.amazonaws.com/default/FaceDataCapture';
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setUploadedImage(file);
+      setErrorMessage(null); // Clear any previous error
+    } else {
+      setErrorMessage('Please upload a valid image file (PNG, JPEG).');
+    }
   };
 
-  // Initialize UI Toolkit
-  useEffect(() => {
-    // Create and set session container
-    const container = document.createElement('div');
-    container.id = 'sessionContainer';
-    document.body.appendChild(container);
-    setSessionContainer(container);
+  const handleRetrieveUserSubmit = async () => {
+    if (!uploadedImage) {
+      setErrorMessage('Please upload an image first.');
+      return;
+    }
 
-    // Clean up session container on unmount
-    return () => {
-      if (container) {
-        document.body.removeChild(container);
-      }
-    };
-  }, []);
+    setIsLoading(true);
+    setErrorMessage(null);
+    setMatchResult(null);
 
-  // Function to start a session
-  const startSession = async () => {
     try {
-      const jwt = generateJWT(config.sessionName, 1, 'session123', config.userName);
+      const formData = new FormData();
+      formData.append('file', uploadedImage);
 
-      config.videoSDKJWT = jwt; // Set the JWT in the config object
+      const response = await fetch(retrieveUserApiUrl, {
+        method: 'POST',
+        body: uploadedImage,
+      });
 
-      // Join the session using the UI Toolkit
-      if (sessionContainer) {
-        await uitoolkit.joinSession(sessionContainer, config);
-        setIsSessionActive(true);
-        console.log('Joined the session successfully.');
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setMatchResult(`User ID: ${result.user_id}, Similarity: ${result.similarity}%`);
+    } catch (error: any) {
+      console.error('Error retrieving user:', error);
+      setErrorMessage(
+        error.message || 'An error occurred while retrieving the user. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFaceDataCaptureSubmit = async () => {
+    if (!uploadedImage) {
+      setErrorMessage('Please upload an image first.');
+      return;
+    }
+
+    if (!userEmail) {
+      setErrorMessage('Please enter a user email.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+    setMatchResult(null);
+
+    try {
+      const response = await fetch(faceDataCaptureApiUrl, {
+        method: 'POST',
+        headers: {
+          'x-user-email': userEmail, // Pass the email in a custom header
+        },
+        body: uploadedImage, // Send the binary image data in the body
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setMatchResult(`Face associated successfully. User ID: ${result.user_id}`);
+      } else {
+        setErrorMessage(`Error: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error joining session:', error);
+      console.error('Error capturing face data:', error);
+      setErrorMessage('An error occurred while capturing face data. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  // Function to leave/end a session
-  const endSession = () => {
-    if (sessionContainer) {
-      uitoolkit.closeSession(sessionContainer);
-      setIsSessionActive(false);
-      console.log('Session ended successfully.');
-    }
-  };
-
-  // Listener for session cleanup
-  useEffect(() => {
-    const sessionClosed = () => {
-      if (sessionContainer) {
-        uitoolkit.closeSession(sessionContainer);
-        setIsSessionActive(false);
-        console.log('Session closed and cleaned up.');
-      }
-    };
-
-    uitoolkit.onSessionClosed(sessionClosed);
-
-    return () => {
-      uitoolkit.onSessionClosed(null); // Cleanup listener on unmount
-    };
-  }, [sessionContainer]);
 
   return (
     <main>
-      <h1>Zoom Video SDK Demo</h1>
-      {!isSessionActive ? (
-        <button onClick={startSession}>Start Session</button>
-      ) : (
-        <button onClick={endSession}>End Session</button>
+      <h1>Image Upload for Rekognition</h1>
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        style={{ marginBottom: '10px' }}
+      />
+      <input
+        type="email"
+        placeholder="Enter user email"
+        value={userEmail || ''}
+        onChange={(e) => setUserEmail(e.target.value)}
+        style={{
+          marginLeft: '10px',
+          padding: '5px',
+          border: '1px solid #ccc',
+        }}
+      />
+      <div style={{ marginTop: '20px' }}>
+        <button
+          onClick={handleRetrieveUserSubmit}
+          disabled={isLoading}
+          style={{ marginRight: '10px' }}
+        >
+          {isLoading ? 'Submitting...' : 'Retrieve User by Face'}
+        </button>
+        <button onClick={handleFaceDataCaptureSubmit} disabled={isLoading}>
+          {isLoading ? 'Submitting...' : 'Capture Face Data'}
+        </button>
+      </div>
+
+      {matchResult && (
+        <div style={{ marginTop: '20px', color: 'green' }}>
+          <h2>Match Result</h2>
+          <p>{matchResult}</p>
+        </div>
       )}
-      <button onClick={signOut}>Sign Out</button>
+
+      {errorMessage && (
+        <div style={{ marginTop: '20px', color: 'red' }}>
+          <h2>Error</h2>
+          <p>{errorMessage}</p>
+        </div>
+      )}
     </main>
   );
 }
