@@ -3,7 +3,7 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 
 function App() {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [matchResult, setMatchResult] = useState<string | null>(null);
+  const [apiResult, setAPIResult] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { user, signOut } = useAuthenticator();
@@ -34,7 +34,7 @@ function App() {
 
     setIsLoading(true);
     setErrorMessage(null);
-    setMatchResult(null);
+    setAPIResult(null);
 
     try {
       const formData = new FormData();
@@ -45,12 +45,12 @@ function App() {
         body: uploadedImage,
       });
 
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status} - ${response.statusText}`);
-      }
+      const data = await response.json();
+          const result = `Match Found: ${data.user_id || 'Unknown User'}, Similarity: ${
+            data.similarity || 0
+          }%`;
 
-      const result = await response.json();
-      setMatchResult(`User ID: ${result.user_id}, Similarity: ${result.similarity}%`);
+      setAPIResult(result);
     } catch (error: any) {
       console.error('Error retrieving user:', error);
       setErrorMessage(
@@ -69,7 +69,7 @@ function App() {
 
     setIsLoading(true);
     setErrorMessage(null);
-    setMatchResult(null);
+    setAPIResult(null);
 
     try {
       const response = await fetch(faceDataCaptureApiUrl, {
@@ -81,11 +81,7 @@ function App() {
       });
 
       const result = await response.json();
-      if (result.success) {
-        setMatchResult(`Face associated successfully. User ID: ${result.user_id}`);
-      } else {
-        setErrorMessage(`Error: ${result.error || 'Unknown error'}`);
-      }
+      setAPIResult(result);
     } catch (error) {
       console.error('Error capturing face data:', error);
       setErrorMessage('An error occurred while capturing face data. Please try again.');
@@ -118,10 +114,10 @@ function App() {
         </button>
       </div>
 
-      {matchResult && (
+      {apiResult && (
         <div style={{ marginTop: '20px', color: 'green' }}>
-          <h2>Match Result</h2>
-          <p>{matchResult}</p>
+          <h2>Result:</h2>
+          <p>{apiResult}</p>
         </div>
       )}
 
